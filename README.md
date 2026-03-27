@@ -1,4 +1,4 @@
-# LumenMetrics (o el nombre que elegiste)
+# BlindCreators
 
 An End-to-End Data Engineering pipeline designed to provide actionable insights for YouTube Content Creators.
 
