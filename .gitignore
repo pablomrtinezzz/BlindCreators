@@ -1,0 +1,23 @@
+# Environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data (Crucial: Never leak raw data)
+data/raw/
+data/processed/
+
+# Security & Secrets
+.env
+keys.json
+credentials.json
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
