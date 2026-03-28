@@ -247,31 +247,59 @@ with tab_seo:
         st.plotly_chart(fig_scatter, use_container_width=True)
 
 # ==========================================
-# TAB 4: AI STRATEGIST
+# TAB 4: THE AI WAR ROOM (Strategist & Miner)
 # ==========================================
 with tab_ai:
-    st.markdown("### 🤖 Data-Driven Concept Generator")
-    st.caption("Leverage Gemini to analyze your channel's historical DNA and generate highly clickable concepts.")
+    st.markdown("### 🤖 The AI War Room")
+    st.caption(
+        "Leverage Gemini to analyze your channel's historical DNA and extract ideas directly from your audience's comments.")
 
-    with st.container(border=True):
-        ai_col1, ai_col2 = st.columns([1, 1], gap="large")
+    # Create two sub-tabs inside the AI section for our two killer features
+    ai_tab1, ai_tab2 = st.tabs(["💡 Concept Generator", "⛏️ Audience Miner"])
 
-        with ai_col1:
-            user_topic = st.text_area("💡 Video Topic / Core Idea",
-                                      placeholder="e.g., A deep dive into Elden Ring's hardest boss...", height=100)
-            user_style = st.text_input("🎨 Vibe / Instructions (Optional)",
-                                       placeholder="e.g., Make it mysterious, no clickbait.")
-            generate_btn = st.button("✨ Generate Optimized Titles", type="primary", use_container_width=True)
+    with ai_tab1:
+        with st.container(border=True):
+            ai_col1, ai_col2 = st.columns([1, 1], gap="large")
 
-        with ai_col2:
-            if generate_btn:
-                if user_topic:
-                    with st.spinner("Analyzing channel data & consulting Google Gemini..."):
-                        hist_context = get_top_performing_titles()
-                        ai_suggestions = generate_seo_titles(user_topic, hist_context, user_style)
-                        st.success("Here are your data-driven title ideas:")
-                        st.info(ai_suggestions)
+            with ai_col1:
+                user_topic = st.text_area("💡 Video Topic / Core Idea",
+                                          placeholder="e.g., A deep dive into Elden Ring's hardest boss...", height=100)
+                user_style = st.text_input("🎨 Vibe / Instructions (Optional)",
+                                           placeholder="e.g., Make it mysterious, no clickbait.")
+                generate_btn = st.button("✨ Generate Optimized Titles", type="primary", use_container_width=True)
+
+            with ai_col2:
+                if generate_btn:
+                    if user_topic:
+                        with st.spinner("Analyzing channel data & consulting Google Gemini..."):
+                            hist_context = get_top_performing_titles()
+                            ai_suggestions = generate_seo_titles(user_topic, hist_context, user_style)
+                            st.success("Data-driven title ideas:")
+                            st.info(ai_suggestions)
+                    else:
+                        st.warning("⚠️ Please provide a video topic to begin.")
                 else:
-                    st.warning("⚠️ Please provide a video topic to begin.")
-            else:
-                st.info("Your AI-generated titles will appear here. Fill out the form and hit generate!")
+                    st.info("Your AI-generated titles will appear here. Fill out the form and hit generate!")
+
+    with ai_tab2:
+        st.markdown("**Listen to the Data**")
+        st.markdown(
+            "We've extracted hundreds of real comments from your top videos. Click the button to let the AI find what your audience wants to watch next.")
+
+        # A massive, full-width button to run the heavy analysis
+        mine_btn = st.button("🔍 Run Audience Sentiment Analysis", type="primary", use_container_width=True)
+
+        if mine_btn:
+            with st.spinner("Processing natural language and clustering audience requests..."):
+                # Dynamically import the new miner function
+                try:
+                    from ai_assistant import mine_audience_insights
+                except ModuleNotFoundError:
+                    from src.ai_assistant import mine_audience_insights
+
+                mining_results = mine_audience_insights()
+
+                st.success("Analysis Complete!")
+                # Render the Markdown response safely inside a clean container
+                with st.container(border=True):
+                    st.markdown(mining_results)
