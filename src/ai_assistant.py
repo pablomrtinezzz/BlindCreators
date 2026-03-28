@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
+import json
 
 # 1. Load Environment Variables
 load_dotenv()
@@ -73,6 +74,57 @@ def generate_seo_titles(video_topic, channel_context, extra_instructions=""):
     except Exception as e:
         return f"❌ Error connecting to Gemini: {e}"
 
+def mine_audience_insights(json_path=None):
+    """
+    Reads the extracted YouTube comments and uses Gemini to analyze the audience's
+    core desires, recurring themes, and suggests new video ideas.
+    """
+    try:
+        # Resolve absolute path robustly regardless of where the script is run from
+        if json_path is None:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            json_path = os.path.join(current_dir, "..", "data", "raw", "audience_comments.json")
+
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        if not data:
+            return "No audience data found."
+
+        # Aggregate all comments into a single text block to feed the LLM
+        all_comments = []
+        for video in data:
+            all_comments.extend(video.get("comments", []))
+
+        # Combine the comments into a bulleted list for the prompt
+        combined_comments = "\n- ".join(all_comments)
+
+        prompt = f"""
+        You are a brilliant YouTube Content Strategist and Data Analyst.
+        Below is a raw dump of recent comments from a creator's audience.
+
+        Raw Audience Comments:
+        - {combined_comments}
+
+        Task:
+        1. Analyze the sentiments, recurring lore debates, and weapon discussions in these comments.
+        2. Identify 3 core topics or specific ideas that the audience is highly engaged with.
+        3. Pitch 3 concrete, highly-clickable video concepts based exclusively on this data.
+
+        Format your response clearly using Markdown, with engaging headings.
+        Keep it strictly professional and actionable for a B2B SaaS platform.
+        """
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return response.text
+
+    except FileNotFoundError:
+        return f"❌ Audience comments file not found at path: {json_path}. Please run the extraction script first."
+    except Exception as e:
+        return f"❌ Error analyzing audience data: {e}"
 
 if __name__ == "__main__":
     print("🧠 Initializing BlindCreators AI Assistant...\n")
