@@ -36,10 +36,10 @@ def get_top_performing_titles(db_path="../data/database.sqlite", limit=5):
         return ""
 
 
-def generate_seo_titles(video_topic, channel_context):
+def generate_seo_titles(video_topic, channel_context, extra_instructions=""):
     """
     Calls the Google Gemini API to generate SEO-optimized titles
-    based on the user's historical success.
+    based on the user's historical success and optional styling constraints.
     """
     prompt = f"""
     You are an expert YouTube SEO strategist and copywriter.
@@ -56,13 +56,15 @@ def generate_seo_titles(video_topic, channel_context):
     Suggest 3 highly clickable, SEO-optimized YouTube titles for this new video.
     Match the style and format of their past successful videos.
     Keep them under 60 characters if possible to avoid truncation on mobile.
-    Do not use extreme clickbait, but make them compelling.
-
-    Return ONLY the 3 titles in a numbered list. Do not include any other text.
     """
 
+    # Inject the extra string requested by the user
+    if extra_instructions:
+        prompt += f"\nCRITICAL INSTRUCTION FROM CREATOR: {extra_instructions}\n"
+
+    prompt += "\nReturn ONLY the 3 titles in a numbered list. Do not include any other text."
+
     try:
-        # Using the new SDK syntax and an updated fast model
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt
