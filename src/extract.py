@@ -1,4 +1,5 @@
 import os
+import json
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
@@ -74,6 +75,19 @@ def get_all_videos_from_playlist(youtube, playlist_id):
 
     return videos
 
+def save_to_json(data, filepath):
+    """
+    Saves data to a JSON file, creating directories if they don't exist.
+    """
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+    with open(filepath, 'w', encoding='utf-8') as f:
+        # indent=4 makes it readable for humans
+        # ensure_ascii=False keeps emojis and special characters intact
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+    print(f"📁 Data successfully saved to {filepath}")
 
 if __name__ == "__main__":
     youtube = get_youtube_client()
@@ -97,6 +111,10 @@ if __name__ == "__main__":
         print("\nFirst 3 videos found:")
         for video in all_videos[:3]:
             print(f"- {video['title']} (ID: {video['video_id']})")
+
+            # SAVE THE DATA
+            output_path = "../data/raw/eldentips_raw_videos.json"
+            save_to_json(all_videos, output_path)
 
     except Exception as e:
         print(f"❌ Error: {e}")
