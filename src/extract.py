@@ -3,7 +3,7 @@ import json
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
@@ -14,107 +14,100 @@ def get_youtube_client():
 
 
 def get_channel_info_by_handle(youtube, handle):
-    """
-    Fetches the Channel ID and the 'Uploads' Playlist ID using a @handle.
-    """
-    # Ensure the handle starts with '@'
+    """Fetches the Channel ID and the 'Uploads' Playlist ID using a @handle."""
     clean_handle = handle if handle.startswith('@') else f'@{handle}'
-
-    request = youtube.channels().list(
-        part="snippet,contentDetails,statistics",
-        forHandle=clean_handle
-    )
+    request = youtube.channels().list(part="snippet,contentDetails,statistics", forHandle=clean_handle)
     response = request.execute()
 
     if not response.get('items'):
-        raise ValueError(f"Channel {clean_handle} not found. Check the handle.")
+        raise ValueError(f"Channel {clean_handle} not found.")
 
     channel_data = response['items'][0]
-
-    # Extract key data
-    channel_id = channel_data['id']
-    channel_name = channel_data['snippet']['title']
-
-    # The master key to get all videos
-    uploads_playlist_id = channel_data['contentDetails']['relatedPlaylists']['uploads']
-
-    return channel_id, channel_name, uploads_playlist_id
+    return channel_data['id'], channel_data['snippet']['title'], channel_data['contentDetails']['relatedPlaylists'][
+        'uploads']
 
 
 def get_all_videos_from_playlist(youtube, playlist_id):
-    """
-    Retrieves all video metadata from a playlist using API pagination.
-    """
+    """Retrieves basic video metadata from a playlist using API pagination."""
     videos = []
     next_page_token = None
 
-    # Infinite loop to handle pagination until no pages are left
     while True:
         request = youtube.playlistItems().list(
             part="snippet,contentDetails",
             playlistId=playlist_id,
-            maxResults=50,  # Max allowed by YouTube API
+            maxResults=50,
             pageToken=next_page_token
         )
         response = request.execute()
 
-        # Iterate through the videos in the current page
         for item in response.get('items', []):
-            videos.append({
-                'video_id': item['contentDetails']['videoId'],
-                'title': item['snippet']['title'],
-                'published_at': item['snippet']['publishedAt']
-            })
+            videos.append(item['contentDetails']['videoId'])
 
-        # Check if there is a next page
         next_page_token = response.get('nextPageToken')
-
-        # Exit loop if no more pages
         if not next_page_token:
             break
 
     return videos
 
+
+def get_video_details(youtube, video_ids):
+    """
+    Fetches detailed statistics for a list of video IDs.
+    Implements batching to handle the 50 IDs per request API limit.
+    """
+    all_video_stats = []
+
+    # Batching / Chunking logic: step by 50
+    for i in range(0, len(video_ids), 50):
+        chunk = video_ids[i:i + 50]
+
+        request = youtube.videos().list(
+            part="snippet,contentDetails,statistics",
+            id=",".join(chunk)  # Joins the list into a comma-separated string
+        )
+        response = request.execute()
+        all_video_stats.extend(response.get('items', []))
+
+    return all_video_stats
+
+
 def save_to_json(data, filepath):
-    """
-    Saves data to a JSON file, creating directories if they don't exist.
-    """
-    # Ensure the directory exists
+    """Saves data to a JSON file."""
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
-
     with open(filepath, 'w', encoding='utf-8') as f:
-        # indent=4 makes it readable for humans
-        # ensure_ascii=False keeps emojis and special characters intact
         json.dump(data, f, indent=4, ensure_ascii=False)
-
     print(f"📁 Data successfully saved to {filepath}")
+
 
 if __name__ == "__main__":
     youtube = get_youtube_client()
-
-    # Dogfooding with your channel
     my_handle = "@TheEldenTips"
 
-    print(f"Searching for channel: {my_handle}...\n")
+    output_path = "../data/raw/eldentips_raw_videos.json"
+
+    print(f"🔄 Starting Data Extraction Pipeline for {my_handle}...\n")
 
     try:
+        # 1. Get Playlist ID
         ch_id, ch_name, uploads_id = get_channel_info_by_handle(youtube, my_handle)
-        print(f"✅ Data found for channel: {ch_name}.")
-        print(f"Extracting video list from playlist: {uploads_id}...\n")
+        print(f"✅ Found channel: {ch_name}")
 
-        # Call our paginated function
-        all_videos = get_all_videos_from_playlist(youtube, uploads_id)
+        # 2. Get all Video IDs
+        video_ids = get_all_videos_from_playlist(youtube, uploads_id)
+        print(f"✅ Found {len(video_ids)} video IDs. Fetching detailed stats in batches...")
 
-        print(f"🎉 Success! Extracted a total of {len(all_videos)} videos.")
+        # 3. Enrich with detailed stats (Batching)
+        enriched_videos = get_video_details(youtube, video_ids)
+        print(f"🎉 Success! Extracted rich data for {len(enriched_videos)} videos.")
 
-        # Display the first 3 videos as a test
-        print("\nFirst 3 videos found:")
-        for video in all_videos[:3]:
-            print(f"- {video['title']} (ID: {video['video_id']})")
+        # Display the first video's views as a test
+        first_video_title = enriched_videos[0]['snippet']['title']
+        first_video_views = enriched_videos[0]['statistics'].get('viewCount', '0')
+        print(f"\nExample -> {first_video_title} | Views: {first_video_views}")
 
-            # SAVE THE DATA
-            output_path = "../data/raw/eldentips_raw_videos.json"
-            save_to_json(all_videos, output_path)
+        # 4. Save the rich data
+        save_to_json(enriched_videos, output_path)
 
     except Exception as e:
         print(f"❌ Error: {e}")
