@@ -4,8 +4,11 @@ import sqlite3
 import os
 import plotly.express as px
 
-st.set_page_config(page_title="BlindCreators | Dashboard", page_icon="👁️", layout="wide")
-
+# IMPORT OUR AI MODULE
+try:
+    from ai_assistant import get_top_performing_titles, generate_seo_titles
+except ModuleNotFoundError:
+    from src.ai_assistant import get_top_performing_titles, generate_seo_titles
 
 @st.cache_data
 def load_data():
@@ -138,3 +141,36 @@ if not df.empty:
 
     with st.expander("🔍 View Raw Database"):
         st.dataframe(df.drop(columns=['publish_hour'], errors='ignore'), use_container_width=True)
+
+    # --- 5. AI SEO TITLE GENERATOR ---
+    st.subheader("🤖 AI Content Strategist")
+    st.markdown(
+        "Let Gemini analyze your channel's historical data to suggest highly clickable titles for your next video.")
+
+    # Create a visually distinct container for the AI tool
+    with st.container(border=True):
+        ai_col1, ai_col2 = st.columns([2, 1])
+
+        with ai_col1:
+            user_topic = st.text_input("💡 What is your next video about?",
+                                       placeholder="e.g., How to beat Malenia with magic...")
+
+        with ai_col2:
+            user_style = st.text_input("🎨 Any specific vibe? (Optional)",
+                                       placeholder="e.g., Make it mysterious, use emojis...")
+
+        # The button that triggers the LLM
+        if st.button("✨ Generate Viral Titles", type="primary", use_container_width=True):
+            if user_topic:
+                with st.spinner("Analyzing your channel's DNA and consulting Google Gemini..."):
+                    # 1. Retrieve the context (RAG pattern)
+                    hist_context = get_top_performing_titles()
+
+                    # 2. Call Gemini API
+                    ai_suggestions = generate_seo_titles(user_topic, hist_context, user_style)
+
+                    # 3. Display the result
+                    st.success("Here are your data-driven title ideas:")
+                    st.info(ai_suggestions)
+            else:
+                st.warning("⚠️ Please enter a video topic first.")
