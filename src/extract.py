@@ -2,13 +2,13 @@ import os
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 
 def get_youtube_client():
-    """Initializes the YouTube API client."""
+    """Initializes and returns the YouTube API client."""
     return build("youtube", "v3", developerKey=API_KEY)
 
 
@@ -16,6 +16,7 @@ def get_channel_info_by_handle(youtube, handle):
     """
     Fetches the Channel ID and the 'Uploads' Playlist ID using a @handle.
     """
+    # Ensure the handle starts with '@'
     clean_handle = handle if handle.startswith('@') else f'@{handle}'
 
     request = youtube.channels().list(
@@ -29,26 +30,73 @@ def get_channel_info_by_handle(youtube, handle):
 
     channel_data = response['items'][0]
 
+    # Extract key data
     channel_id = channel_data['id']
     channel_name = channel_data['snippet']['title']
 
+    # The master key to get all videos
     uploads_playlist_id = channel_data['contentDetails']['relatedPlaylists']['uploads']
 
     return channel_id, channel_name, uploads_playlist_id
 
 
+def get_all_videos_from_playlist(youtube, playlist_id):
+    """
+    Retrieves all video metadata from a playlist using API pagination.
+    """
+    videos = []
+    next_page_token = None
+
+    # Infinite loop to handle pagination until no pages are left
+    while True:
+        request = youtube.playlistItems().list(
+            part="snippet,contentDetails",
+            playlistId=playlist_id,
+            maxResults=50,  # Max allowed by YouTube API
+            pageToken=next_page_token
+        )
+        response = request.execute()
+
+        # Iterate through the videos in the current page
+        for item in response.get('items', []):
+            videos.append({
+                'video_id': item['contentDetails']['videoId'],
+                'title': item['snippet']['title'],
+                'published_at': item['snippet']['publishedAt']
+            })
+
+        # Check if there is a next page
+        next_page_token = response.get('nextPageToken')
+
+        # Exit loop if no more pages
+        if not next_page_token:
+            break
+
+    return videos
+
+
 if __name__ == "__main__":
     youtube = get_youtube_client()
 
+    # Dogfooding with your channel
     my_handle = "@TheEldenTips"
 
     print(f"Searching for channel: {my_handle}...\n")
 
     try:
         ch_id, ch_name, uploads_id = get_channel_info_by_handle(youtube, my_handle)
-        print(f"✅ Success! Data found:")
-        print(f"- Channel Name: {ch_name}")
-        print(f"- Channel ID: {ch_id}")
-        print(f"- Uploads Playlist ID: {uploads_id}")
+        print(f"✅ Data found for channel: {ch_name}.")
+        print(f"Extracting video list from playlist: {uploads_id}...\n")
+
+        # Call our paginated function
+        all_videos = get_all_videos_from_playlist(youtube, uploads_id)
+
+        print(f"🎉 Success! Extracted a total of {len(all_videos)} videos.")
+
+        # Display the first 3 videos as a test
+        print("\nFirst 3 videos found:")
+        for video in all_videos[:3]:
+            print(f"- {video['title']} (ID: {video['video_id']})")
+
     except Exception as e:
         print(f"❌ Error: {e}")
