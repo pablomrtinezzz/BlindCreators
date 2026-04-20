@@ -117,11 +117,11 @@ BlindCreators utilizes **Gemini 2.5 Flash** for two critical B2B functions:
 
 
 ### Data Flow Overview
-![Data Flow](images/data_flow.png)
+![Data Flow](src/images/data_flow.png)
 
 ### Dashboard Preview
 
-![Dashboard Previwe](images/dashboard_preview.png)
+![Dashboard Previwe](src/images/dashboard_preview.png)
 -----
 
 ## 🗓️ Strategic Roadmap (Sprints)

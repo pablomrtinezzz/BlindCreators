@@ -63,7 +63,7 @@ BRAND_COLORS = ['#8b5cf6', '#3b82f6', '#ec4899', '#10b981']
 @st.cache_data
 def load_data():
     """Fetches all necessary metrics from the SQLite database."""
-    current_dir = os.path.dirname(os.path.abspath(__file__))
+    current_dir = os.path.dirname(os.path.abspath(__file__)) 
     db_path = os.path.join(current_dir, "..", "data", "database.sqlite")
     try:
         conn = sqlite3.connect(db_path)
@@ -229,7 +229,7 @@ with tab_seo:
             color='views', color_continuous_scale='Blues'
         )
         fig_tags.update_layout(yaxis_title="", xaxis_title="Median Views", paper_bgcolor="rgba(0,0,0,0)",
-                               plot_bgcolor="rgba(0,0,0,0)")
+                            plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_tags, use_container_width=True)
 
     with col_seo2:
