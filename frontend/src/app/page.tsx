@@ -35,11 +35,46 @@ export default function DashboardPage() {
             });
     }, []);
 
+    // frontend/src/app/page.tsx (Replace the entire if (loading) block)
+
     if (loading) {
         return (
-            <div className="flex h-screen flex-col items-center justify-center text-indigo-500 gap-4">
-                <Activity className="animate-spin" size={48} />
-                <h2 className="text-xl font-bold animate-pulse text-slate-300">Connecting to BlindCreators Core...</h2>
+            <div className="min-h-screen p-8 max-w-7xl mx-auto w-full animate-pulse">
+                {/* Header Skeleton */}
+                <div className="mb-12 border-b border-slate-800 pb-6 flex justify-between items-end">
+                    <div>
+                        <div className="h-10 w-64 bg-slate-800 rounded-lg mb-4"></div>
+                        <div className="h-4 w-48 bg-slate-800/50 rounded"></div>
+                    </div>
+                    <div className="h-8 w-40 bg-slate-800/50 rounded-full"></div>
+                </div>
+
+                {/* KPI Cards Skeleton */}
+                <section className="mb-16">
+                    <div className="h-6 w-48 bg-slate-800 rounded mb-6"></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="bg-slate-800/40 h-[104px] rounded-xl border border-slate-700/30"></div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Chart Skeleton */}
+                <section className="mb-16">
+                    <div className="bg-slate-800/40 h-[400px] rounded-xl border border-slate-700/30 w-full flex items-center justify-center">
+                        <div className="h-4 w-32 bg-slate-700/50 rounded"></div>
+                    </div>
+                </section>
+
+                {/* Videos Skeleton */}
+                <section>
+                    <div className="h-6 w-48 bg-slate-800 rounded mb-6"></div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {[1, 2].map(i => (
+                            <div key={i} className="bg-slate-800/40 h-32 rounded-xl border border-slate-700/30"></div>
+                        ))}
+                    </div>
+                </section>
             </div>
         );
     }
