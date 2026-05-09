@@ -1,139 +1,89 @@
 
------
-
-## 📄 Final Documentation: README.md
-
-markdown
 # 👁️ BlindCreators: B2B AI-Driven Content Intelligence
 
-> **Value Proposition**: A modular business intelligence ecosystem designed for high-performance content creators. It automates data ingestion from YouTube, performs statistical outlier-filtering, and leverages LLMs (Gemini 2.5 Flash) to transform raw metrics into actionable growth strategies.
+[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
+[![AI Model](https://img.shields.io/badge/AI-Gemini%203%20Flash-orange.svg)](https://deepmind.google/technologies/gemini/)
+[![Framework](https://img.shields.io/badge/Framework-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+
+> **Value Proposition**: A modular business intelligence ecosystem designed for high-performance content creators. It automates data ingestion from YouTube, performs statistical outlier-filtering, and leverages LLMs to transform raw metrics into actionable growth strategies.
 
 ---
 
-## 📑 Table of Contents
+## 🏗️ System Architecture & Engineering
+BlindCreators is built on a robust **ETL + RAG** (Retrieval-Augmented Generation) pipeline:
 
-1. [📂 Repository Structure](#-repository-structure)
-2. [👥 Lead Developer](#-lead-developer)
-3. [🏗️ System Architecture](#️-system-architecture)
-4. [⚙️ Environment Requirements](#️-environment-requirements)
-5. [🛠️ Modules & Execution](#️-modules--execution)
-6. [🤖 AI Intelligence Layer](#-ai-intelligence-layer)
-7. [📊 Visual Insights](#-visual-insights)
-8. [🗓️ Strategic Roadmap (Sprints)](#️-strategic-roadmap-sprints)
+*   **Extraction Layer**: High-concurrency ingestion via YouTuabe Data API v3.
+*   **Analytics Engine**: Beyond raw views—it calculates **"True Performance"** by applying statistical normalization and filtering viral outliers using Median Percentiles.
+*   **NLP Audience Mining**: Vector-based analysis (simulated via NLP clustering) of top-level comments to identify high-intent audience segments.
+*   **AI Strategy Layer**: Implements a RAG pattern using **Gemini 3 Flash** to inject historical performance context into generative SEO and content planning tasks.
+
+---
+
+## 🛠️ Key Engineering Features
+*   **Data Integrity**: Relational persistence using SQLite to track performance history and avoid API quota exhaustion.
+*   **Statistical Cleansing**: Custom logic in `transform.py` to isolate organic growth from algorithmic anomalies.
+*   **B2B Dashboarding**: A premium UI/UX built in Streamlit with custom branding for data-driven storytelling.
+*   **Scalability**: Modular design allows swapping the persistence layer (e.g., PostgreSQL) or the LLM provider with minimal refactoring.
 
 ---
 
 ## 📂 Repository Structure
-
 ```text
 BlindCreators/
 ├── data/
-│   ├── raw/                # JSON files (Audience comments, API dumps)
-│   └── database.sqlite     # Relational storage for processed video metrics
+│   ├── raw/                # Non-structured JSON (API dumps)
+│   └── database.sqlite     # Processed relational storage
 ├── src/
-│   ├── extract.py          # YouTube Data API Ingestion engine
-│   ├── transform.py        # Data cleaning & Feature Engineering
-│   ├── load.py             # SQLite Persistence layer
-│   ├── ai_assistant.py     # Gemini LLM Integration (RAG Pattern)
-│   ├── extract_comments.py # NLP Data miner for audience sentiment
-│   └── app.py              # Streamlit Premium Dashboard
-├── .streamlit/
-│   └── config.toml         # UI/UX Custom Branding (Slate & Indigo)
-├── .env                    # Secure API Credentials (Ignored by Git)
+│   ├── extract.py          # Ingestion engine
+│   ├── transform.py        # Feature Engineering & Normalization
+│   ├── ai_assistant.py     # Gemini Integration (RAG Pattern)
+│   └── app.py              # Analytical Dashboard
+├── .streamlit/             # UI/UX Custom Branding
 ├── requirements.txt        # Dependency Manifest
-└── README.md               # Project Documentation
-````
+└── .env.example            # Template for secure credentials
 
------
-
-## 👥 Lead Developer
-
-  - **Pablo Martínez Suárez**
-  - **GitHub**: https://github.com/pablomrtinezzz
-  - **Status**: v0.1-beta (MVP Phase Completed)
-
------
-
-## 🏗️ System Architecture
-
-BlindCreators follows a modern **ETL + RAG** (Retrieval-Augmented Generation) architecture:
-
-1.  **Extraction**: Connects to YouTube Data API v3 to fetch public metrics and metadata.
-2.  **Transformation**: Normalizes data and calculates "True Performance" by filtering viral outliers via Median Percentiles.
-3.  **Audience Mining**: Extracts top-level comments and uses NLP to cluster audience needs.
-4.  **AI Strategy**: Injects historical channel data into Gemini 2.5 Flash to generate context-aware SEO titles.
-
------
-
-## ⚙️ Environment Requirements
-
-Before execution, ensure you have:
-
-  * **Python 3.12+**
-  * **YouTube Data API Key** (Google Cloud Console)
-  * **Gemini API Key** (Google AI Studio)
-  * **Virtual Environment** (`venv`) activated.
-
------
-
-## 🛠️ Modules & Execution
-
-### 1\. Data Ingestion & ETL
-
-To update the local database with the latest channel metrics:
-
-```bash
-python src/extract.py
 ```
 
-### 2\. Audience Sentiment Mining
+---
 
-To download and prepare the latest top comments for AI analysis:
+## 🚀 Getting Started
 
+### Prerequisites
+
+* Python 3.12+
+* API Keys for Google Cloud (YouTube) and Google AI Studio (Gemini).
+
+### Installation
+
+1. **Clone & Setup**:
 ```bash
-python src/extract_comments.py
+git clone [https://github.com/pablomrtinezzz/BlindCreators.git](https://github.com/pablomrtinezzz/BlindCreators.git)
+cd BlindCreators
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+
 ```
+2. **Environment**:
+   Copy `.env.example` to `.env` and fill in your API keys.
 
-### 3\. Business Intelligence Dashboard
+---
 
-To launch the premium analytical interface:
+## 🤖 AI Intelligence Capabilities
+*   **Contextual SEO**: Generates titles by analyzing the top 10% of historically successful content.
+*   **Gap Analysis**: Identifies "Audience Pain Points" by processing raw comment data through a multi-shot prompting strategy.
 
-```bash
-streamlit run src/app.py
-```
+---
 
------
-
-## 🤖 AI Intelligence Layer
-
-BlindCreators utilizes **Gemini 2.5 Flash** for two critical B2B functions:
-
-  * **SEO Optimizer**: Analyzes past top-performing titles to suggest 3 new high-CTR alternatives.
-  * **Audience Miner**: Reads JSON comment dumps to identify content gaps and "Audience Pain Points."
-
------
-
-## 📊 Visual Insights & Diagrams
-
-
-### Data Flow Overview
-![Data Flow](src/images/data_flow.png)
-
-### Dashboard Preview
-
-![Dashboard Previwe](src/images/dashboard_preview.png)
------
-
-## 🗓️ Strategic Roadmap (Sprints)
-
-| Sprint | Goal | Status |
+## 🗓️ Strategic Roadmap
+| Phase | Focus | Status |
 | :--- | :--- | :--- |
-| **Sprint 1** | ETL Pipeline & Basic Dashboard | ✅ Done |
-| **Sprint 2** | AI Integration (RAG) & Audience Miner | ✅ Done |
-| **Sprint 3** | Professional Frontend (React + FastAPI) | 🗓️ Planned |
-| **Sprint 4** | OAuth 2.0 & Private Analytics API | 🗓️ Planned |
+| **MVP** | ETL Pipeline & Core Analytics | ✅ |
+| **Beta** | RAG Integration & Audience Mining | ✅ |
+| **Scale** | FastAPI Backend + React Dashboard | 🗓️ |
+| **Enterprise**| Multi-channel OAuth 2.0 Integration | 🗓️ |
 
------
-
-© 2026 BlindCreators - Pablo Martínez Suárez
+---
+**Lead Developer**: [Pablo Martínez Suárez](https://github.com/pablomrtinezzz)
 
