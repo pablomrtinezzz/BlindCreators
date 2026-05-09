@@ -1,45 +1,66 @@
 // frontend/src/components/TopHeader.tsx
 'use client';
 
-import { Search, Bell, LogOut, LogIn, PlaySquare } from 'lucide-react';
+import { useState } from 'react';
+import { Search, Bell, LogOut, LogIn, RefreshCw } from 'lucide-react';
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function TopHeader() {
     const { data: session, status } = useSession();
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    // Function to test the real YouTube connection
-    const testYouTubeConnection = async () => {
-        // @ts-expect-error - Custom property added in route.ts
-        const token = session?.accessToken;
+    /**
+     * Triggers the real-time ETL pipeline in the Python backend.
+     * After success, it notifies the Dashboard to refresh data.
+     */
+    const syncYouTubeData = async () => {
+    // 1. Safety check: Is the session even there?
+    if (!session) {
+        alert("Session not found. Please log in again.");
+        return;
+    }
 
-        if (!token) {
-            alert("No access token found. Please log out and log in again.");
-            return;
+    // @ts-expect-error - Custom property added in route.ts
+    const token = session.accessToken;
+    const email = session.user?.email;
+
+    // 2. Explicit check for token and email
+    if (!token || !email) {
+        console.error("Missing credentials:", { token: !!token, email: !!email });
+        alert("Credentials missing. Please log out and log back in to refresh your Google permissions.");
+        return;
+    }
+
+    setIsSyncing(true);
+
+    try {
+        const response = await fetch("http://127.0.0.1:8000/api/v1/youtube/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                access_token: token,
+                user_email: email
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            alert(`✅ Success! Synced ${data.videos_synced} videos.`);
+            window.dispatchEvent(new Event('sync-complete'));
+        } else {
+            alert(`❌ Error: ${data.message || "Unknown error from server"}`);
         }
-
-        try {
-            const response = await fetch("http://127.0.0.1:8000/api/v1/youtube/verify-channel", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ access_token: token }),
-            });
-
-            const data = await response.json();
-
-            if (data.status === 'success') {
-                alert(`✅ Success! Found your channel:\n\nName: ${data.channel_name}\nSubs: ${data.subscribers}\nTotal Views: ${data.total_views}`);
-            } else {
-                alert(`❌ Error: ${data.message}`);
-            }
-        } catch (error) {
-            console.error(error);
-            alert("Failed to connect to the backend.");
-        }
-    };
+    } catch (error) {
+        console.error("Fetch error:", error);
+        alert("Could not connect to the backend. Is your Python server running?");
+    } finally {
+        setIsSyncing(false);
+    }
+};
 
     return (
         <header className="h-20 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-
             <div className="flex-1 max-w-md">
                 <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -54,15 +75,15 @@ export default function TopHeader() {
             </div>
 
             <div className="flex items-center gap-6">
-
-                {/* NEW: YouTube Test Button (Only shows if logged in) */}
+                {/* Real Sync Button */}
                 {session?.user && (
                     <button
-                        onClick={testYouTubeConnection}
-                        className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 border border-red-600/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        onClick={syncYouTubeData}
+                        disabled={isSyncing}
+                        className="flex items-center gap-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 border border-emerald-600/20 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                     >
-                        <PlaySquare size={16} />
-                        Test Real Data
+                        <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+                        {isSyncing ? "Syncing..." : "Sync My Channel"}
                     </button>
                 )}
 
@@ -101,7 +122,6 @@ export default function TopHeader() {
                         </button>
                     )}
                 </div>
-
             </div>
         </header>
     );
