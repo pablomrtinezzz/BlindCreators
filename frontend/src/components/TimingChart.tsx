@@ -13,55 +13,54 @@ interface TimingChartProps {
     data: TimingData[];
 }
 
-export default function TimingChart({ data }: TimingChartProps) {
-    // Transform backend data for the React chart component
+export default function TimingChart({ data }: { data: any[] }) {
+    // 1. Transform backend data for the React chart component
+    // We use optional chaining and fallbacks to prevent the 'substring' error
     const chartData = data.map(item => ({
-        timeSlot: `${item.publish_day_name.substring(0, 3)} ${item.publish_hour}:00`,
-        views: item.views
+        // Use 'day' (already shortened or full) and fallback to '??' if missing
+        timeSlot: item.day || "???",
+        // Use 'value' which represents the average views from our new API
+        views: item.value ?? 0
     }));
 
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700/50 shadow-lg w-full h-[450px] flex flex-col">
-            <h3 className="text-white font-bold mb-6 flex items-center gap-2">
-                <BarChart2 className="text-indigo-400" size={24} />
-                Publishing Performance by Hour
-            </h3>
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-100">Publishing Performance</h2>
+                    <p className="text-sm text-slate-400 mt-1">Average views based on historical publishing day</p>
+                </div>
+                {/* ... rest of your header ... */}
+            </div>
 
-            {/* Contenedor wrapper con altura estricta para evitar el error de Recharts */}
-            <div className="flex-grow w-full h-full min-h-0">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                    <BarChart data={chartData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
+            <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-
-                        {/* Angled text for better readability of Days and Hours */}
                         <XAxis
                             dataKey="timeSlot"
                             stroke="#94a3b8"
                             fontSize={12}
-                            tickMargin={10}
-                            angle={-45}
-                            textAnchor="end"
+                            tickLine={false}
+                            axisLine={false}
                         />
-
-                        {/* Format the Y axis to show cleaner numbers (e.g., 15.2k) */}
                         <YAxis
                             stroke="#94a3b8"
                             fontSize={12}
-                            tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(value) => `${(value / 1000).toFixed(1)}k`}
                         />
-
                         <Tooltip
-                            cursor={{ fill: '#1e293b' }}
-                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#f8fafc', borderRadius: '0.5rem' }}
-                            itemStyle={{ color: '#818cf8', fontWeight: 'bold' }}
-                            formatter={(value: any) => [Number(value).toLocaleString(), "Avg Views"]}
+                            contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#f1f5f9' }}
+                            itemStyle={{ color: '#818cf8' }}
+                            cursor={{ fill: '#334155', opacity: 0.4 }}
                         />
-
                         <Bar
                             dataKey="views"
                             fill="#6366f1"
                             radius={[4, 4, 0, 0]}
-                            animationDuration={1500}
+                            barSize={40}
                         />
                     </BarChart>
                 </ResponsiveContainer>
