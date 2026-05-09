@@ -21,14 +21,15 @@ export default function TimingChart({ data }: TimingChartProps) {
     }));
 
     return (
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700/50 shadow-lg w-full h-[400px] flex flex-col">
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700/50 shadow-lg w-full h-[450px] flex flex-col">
             <h3 className="text-white font-bold mb-6 flex items-center gap-2">
                 <BarChart2 className="text-indigo-400" size={24} />
                 Publishing Performance by Hour
             </h3>
 
-            <div className="flex-grow w-full">
-                <ResponsiveContainer width="100%" height="100%">
+            {/* Contenedor wrapper con altura estricta para evitar el error de Recharts */}
+            <div className="flex-grow w-full h-full min-h-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                     <BarChart data={chartData} margin={{ top: 20, right: 30, bottom: 60, left: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
 
