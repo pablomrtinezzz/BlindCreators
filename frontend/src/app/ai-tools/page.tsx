@@ -3,8 +3,13 @@
 
 import { useState } from 'react';
 import { Sparkles, MessageSquare, Send, Loader2, Target } from 'lucide-react';
+// Import useSession to securely access the logged-in user's data
+import { useSession } from "next-auth/react";
 
 export default function AIToolsPage() {
+    // Initialize the session to access the email
+    const { data: session } = useSession();
+
     // State for Title Generator
     const [topic, setTopic] = useState('');
     const [instructions, setInstructions] = useState('');
@@ -22,8 +27,12 @@ export default function AIToolsPage() {
         setIsGenerating(true);
         setTitles([]);
 
+        // Extract the user's email, defaulting to the test account if not found
+        const userEmail = session?.user?.email || "dailypodcasts012@gmail.com";
+
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/v1/ai/generate-titles', {
+            // Append the user_email as a query parameter so the backend filters the correct data
+            const response = await fetch(`http://127.0.0.1:8000/api/v1/ai/generate-titles?user_email=${userEmail}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -47,8 +56,12 @@ export default function AIToolsPage() {
         setIsMining(true);
         setInsights('');
 
+        // Extract the user's email for the audience miner endpoint as well
+        const userEmail = session?.user?.email || "dailypodcasts012@gmail.com";
+
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/v1/ai/audience-insights');
+            // Append the user_email as a query parameter
+            const response = await fetch(`http://127.0.0.1:8000/api/v1/ai/audience-insights?user_email=${userEmail}`);
             const result = await response.json();
             setInsights(result.data || "No insights generated.");
         } catch (error) {
