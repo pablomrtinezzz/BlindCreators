@@ -126,6 +126,72 @@ def mine_audience_insights(json_path=None):
     except Exception as e:
         return f"❌ Error analyzing audience data: {e}"
 
+def rag_query(query: str, user_email: str, top_k: int = 5) -> dict:
+    """
+    Semantic search over indexed transcripts + Gemini-grounded answer.
+    Returns {"answer": str, "sources": list[dict]}.
+    """
+    from src.rag.chroma_client import similarity_query
+    from src.rag.embedder import embed_text
+
+    query_emb = embed_text(query)
+    results = similarity_query(query_emb, user_email, top_k)
+
+    if not results:
+        return {
+            "answer": (
+                "No indexed content found for your channel. "
+                "Please run a Full Sync first so transcripts and comments are processed."
+            ),
+            "sources": [],
+        }
+
+    context_parts = []
+    for r in results:
+        meta = r["metadata"]
+        doc_type = meta.get("type", "transcript")
+        title = meta.get("video_title", "Unknown")
+        if doc_type == "comment":
+            context_parts.append(f"[VIEWER COMMENTS — Video: \"{title}\"]\n{r['text']}")
+        else:
+            sec = meta.get("start_sec", 0)
+            context_parts.append(f"[TRANSCRIPT — Video: \"{title}\" at {sec:.0f}s]\n{r['text']}")
+
+    context = "\n\n---\n\n".join(context_parts)
+
+    prompt = f"""You are an expert YouTube content analyst working for this creator.
+
+Below are the most relevant excerpts retrieved semantically for the question. \
+Sources include both video transcript segments and blocks of top viewer comments.
+
+Retrieved content:
+{context}
+
+Creator's question: {query}
+
+Instructions:
+- Answer using ONLY the provided content as evidence.
+- Distinguish clearly between what the creator says in their videos vs. what viewers say in comments.
+- Reference specific videos by name when relevant.
+- If the context is insufficient, say so clearly.
+- Keep the answer concise, actionable, and professional."""
+
+    response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
+    sources = [
+        {
+            "video_id": r["metadata"].get("video_id"),
+            "video_title": r["metadata"].get("video_title"),
+            "start_sec": r["metadata"].get("start_sec", 0),
+            "type": r["metadata"].get("type", "transcript"),
+            "score": r["score"],
+        }
+        for r in results
+    ]
+
+    return {"answer": response.text, "sources": sources}
+
+
 if __name__ == "__main__":
     print("🧠 Initializing BlindCreators AI Assistant...\n")
 
