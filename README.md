@@ -18,29 +18,29 @@
 │  Dashboard · Transcripts · Comments · Retention · RAG Chat  │
 └────────────────────────┬────────────────────────────────────┘
                          │ HTTP / REST
-┌────────────────────────▼────────────────────────────────────┐
-│                    FastAPI Backend                           │
-│                                                             │
-│  ┌─────────────┐   ┌──────────────────────────────────┐    │
-│  │ Quick Sync  │   │      Extended Pipeline            │    │
-│  │ (sync'd)    │   │   (FastAPI BackgroundTasks)       │    │
-│  └─────────────┘   │                                  │    │
-│                    │  Thumbnails → Transcripts →       │    │
-│                    │  Comments  → Retention →          │    │
-│                    │  Embeddings (ChromaDB)            │    │
-│                    └──────────────────────────────────┘    │
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐    │
-│  │  SQLite +    │  │  ChromaDB    │  │  Gemini API   │    │
-│  │  SQLAlchemy  │  │  (local,     │  │  2.5 Flash +  │    │
-│  │  (WAL mode)  │  │  cosine)     │  │  embedding-   │    │
-│  └──────────────┘  └──────────────┘  │  001 (3072d)  │    │
-│                                      └───────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                         │
+ ┌────────────────────────▼──────────────────────────────────┐
+ │                    FastAPI Backend                        │
+ │                                                           │
+ │  ┌─────────────┐   ┌──────────────────────────────────┐   │
+ │  │ Quick Sync  │   │      Extended Pipeline           │   │
+ │  │ (sync'd)    │   │   (FastAPI BackgroundTasks)      │   │
+ │  └─────────────┘   │                                  │   │
+ │                    │  Thumbnails → Transcripts →      │   │
+ │                    │  Comments  → Retention →         │   │
+ │                    │  Embeddings (ChromaDB)           │   │
+ │                    └──────────────────────────────────┘   │
+ │                                                           │
+ │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐    │
+ │  │  SQLite +    │  │  ChromaDB    │  │  Gemini API   │    │
+ │  │  SQLAlchemy  │  │  (local,     │  │  2.5 Flash +  │    │
+ │  │  (WAL mode)  │  │  cosine)     │  │  embedding-   │    │
+ │  └──────────────┘  └──────────────┘  │  001 (3072d)  │    │
+ │                                      └───────────────┘    │
+ └───────────────────────────────────────────────────────────┘
+                             │
               Google OAuth 2.0 (multi-tenant)
-              YouTube Data API v3
-              YouTube Analytics API v2
+                  YouTube Data API v3
+                YouTube Analytics API v2
 ```
 
 ---
