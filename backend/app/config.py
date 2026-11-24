@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     chroma_path: Path = DATA_DIR / "chroma"
 
     # HTTP
-    cors_origins: list[str] = ["http://localhost:3001"]
+    cors_origins: list[str] = ["http://localhost:3000"]
     http_timeout_s: float = 20.0
 
     # Auth: the Next.js server signs short-lived HS256 JWTs with this shared secret.
