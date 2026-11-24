@@ -69,10 +69,10 @@ uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 # 3. Web
 cd ../frontend
 npm install
-npm run dev                                  # http://localhost:3000
+npm run dev                                  # http://localhost:3001 (port pinned in package.json)
 ```
 
-In Google Cloud, enable the **YouTube Data API v3** and the **YouTube Analytics API**. Add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI.
+In Google Cloud, enable the **YouTube Data API v3** and the **YouTube Analytics API**. Add `http://localhost:3001/api/auth/callback/google` as an authorized redirect URI.
 
 ### Quality gates (CI runs these on every push)
 ```bash

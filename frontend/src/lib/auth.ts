@@ -3,6 +3,15 @@ import type { JWT } from "next-auth/jwt";
 import GoogleProvider from "next-auth/providers/google";
 
 /** Read-only scopes: the app never writes to the channel. */
+export const YOUTUBE_SCOPES = [
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/yt-analytics.readonly",
+];
+
+/** True when Google granted every YouTube scope (users can untick them on the consent screen). */
+export const hasYouTubeScopes = (granted?: string) =>
+  YOUTUBE_SCOPES.every((s) => (granted ?? "").split(" ").includes(s));
+
 const SCOPES = [
   "openid",
   "email",
@@ -65,6 +74,7 @@ export const authOptions: NextAuthOptions = {
           googleRefreshToken: account.refresh_token,
           googleExpiresAt: (account.expires_at ?? Math.floor(Date.now() / 1000) + 3600) * 1000,
           emailVerified: (profile as { email_verified?: boolean } | undefined)?.email_verified === true,
+          grantedScopes: account.scope,
           error: undefined,
         };
       }
@@ -74,6 +84,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Google tokens stay server-side, in the encrypted JWT cookie. Never expose them here.
       session.error = token.error;
+      session.missingYouTubeAccess = !hasYouTubeScopes(token.grantedScopes);
       return session;
     },
   },

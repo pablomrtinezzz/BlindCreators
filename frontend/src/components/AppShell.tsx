@@ -122,6 +122,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <SyncButton />
           </div>
         </header>
+        {session?.missingYouTubeAccess && (
+          <div role="alert" className="border-b border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn md:px-8">
+            Google didn&apos;t grant access to your YouTube data, so the channel can&apos;t be synced.{" "}
+            <button onClick={() => signOut({ callbackUrl: "/login" })} className="font-semibold underline">
+              Sign in again
+            </button>{" "}
+            and tick <strong>both</strong> YouTube checkboxes on Google&apos;s consent screen.
+          </div>
+        )}
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">{children}</main>
       </div>
     </div>

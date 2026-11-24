@@ -8,7 +8,7 @@
 import { SignJWT } from "jose";
 import { getToken } from "next-auth/jwt";
 import { type NextRequest, NextResponse } from "next/server";
-import { refreshGoogleToken } from "@/lib/auth";
+import { hasYouTubeScopes, refreshGoogleToken } from "@/lib/auth";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://127.0.0.1:8000";
 const SEGMENT = /^[A-Za-z0-9_.-]+$/;
@@ -59,6 +59,12 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ path: string[]
 
   const isSync = req.method === "POST" && path.length === 1 && path[0] === "sync";
   if (isSync) {
+    if (!hasYouTubeScopes(token.grantedScopes)) {
+      return NextResponse.json(
+        { detail: "Google did not grant YouTube access. Sign out, sign in again and tick both YouTube checkboxes." },
+        { status: 403 },
+      );
+    }
     if (!token.googleExpiresAt || Date.now() > token.googleExpiresAt - 10 * 60_000) {
       token = await refreshGoogleToken(token);
     }

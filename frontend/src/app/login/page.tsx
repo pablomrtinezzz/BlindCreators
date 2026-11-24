@@ -39,7 +39,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </p>
           )}
           <p className="mt-6 text-xs text-ink-3">
-            Requests read-only access to YouTube and YouTube Analytics. You can delete all stored data from Settings at any time.
+            Requests read-only access to YouTube and YouTube Analytics. On Google&apos;s consent screen, keep both YouTube boxes ticked. You can delete all stored data from Settings at any time.
           </p>
         </div>
         <p className="text-xs text-ink-3">© {new Date().getFullYear()} BlindCreators</p>
