@@ -1,23 +1,43 @@
-# Environments
+# ── Secrets ──────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+keys.json
+credentials.json
+client_secret*.json
+
+# ── Local data (never commit: contains viewer comments and channel analytics) ──
+backend/data/
+**/data/raw/
+**/data/processed/
+*.sqlite
+*.sqlite-*
+*.db
+
+# ── Python ───────────────────────────────────────────
 venv/
 .venv/
 env/
-
-# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Data (Crucial: Never leak raw data)
-data/raw/
-data/processed/
+# ── Node / Next ──────────────────────────────────────
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
 
-# Security & Secrets
-.env
-keys.json
-credentials.json
-
-# IDEs
+# ── OS / IDE ─────────────────────────────────────────
+.DS_Store
 .vscode/
 .idea/
-.DS_Store
+*.log
+
+# ── Claude Code local settings ───────────────────────
+.claude/settings.local.json

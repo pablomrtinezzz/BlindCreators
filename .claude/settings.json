@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./backend/.venv/**)",
+      "Read(./backend/data/**)",
+      "Read(./backend/uv.lock)",
+      "Read(./frontend/node_modules/**)",
+      "Read(./frontend/.next/**)",
+      "Read(./frontend/package-lock.json)",
+      "Read(./**/*.log)",
+      "Read(./**/__pycache__/**)"
+    ]
+  }
+}

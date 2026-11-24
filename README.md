@@ -1,206 +1,110 @@
-# BlindCreators — AI-Driven YouTube Content Intelligence
+# BlindCreators
 
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
-[![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-orange.svg)](https://deepmind.google/technologies/gemini/)
-[![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-7B2FBE.svg)](https://www.trychroma.com/)
+**See the second your viewers leave.** BlindCreators shows retention analytics for YouTube creators, built for Shorts. It lines up every line of your script with the audience retention curve. It also finds weak hooks and digs through your comments for your next video idea.
 
-> B2B SaaS platform that transforms a YouTube channel into a fully queryable knowledge base. It ingests video metadata, transcripts, viewer comments, and audience retention curves — then makes everything searchable via semantic RAG chat powered by Gemini.
+Right now it is an internal tool, tested on our own channels. The plan is to show that it improves a channel's numbers before offering it to other creators.
 
 ---
+
+## What it does
+
+| Screen | Question it answers |
+|---|---|
+| **Overview** | What should I fix or repeat next? Shows action cards (weakest recent hook, best day to publish, the video with the most comments), median-based KPIs and median views per publish day. |
+| **Shorts Lab** | How does each Short's hook compare with how long people keep watching? Has a scatter plot of the hook (retention at 3 s) against % viewed, a looping-Shorts count and a ranked table with each Short's opening line. |
+| **Video workspace** | Where exactly do people leave, and on which sentence? Shows the retention curve against the channel median, the script line by line with how many viewers each line lost, the steepest drops, a *Hook doctor* (AI rewrites of your opening) and the comments. |
+| **Audience** | What is the audience asking for? Has an AI summary of themes, recurring questions and video ideas (each with a ready-to-film hook), plus a search over your comments. |
+| **Ideas** | Gives title suggestions modelled on your own best uploads of the same format. |
+| **Ask your channel** | Answers questions about your channel from your own scripts and comments (RAG), with sources. |
+
+### How the analytics work, and their limits
+- The **retention curve** comes from the YouTube Analytics API as 100 points (`audienceWatchRatio`). It can go above 100% when viewers replay or loop a Short.
+- **Script lines** are built from caption snippets. They are merged into sentence-like segments of up to 6 s. A line is a *leak* when it loses viewers 1.5× faster than the video's average rate.
+- The API does not say how many viewers each point of the curve is based on. Curves from videos under `MIN_VIEWS_FOR_RETENTION` views (default 1,000) are marked as noisy and left out of channel medians.
+- For a 30 s Short each curve point covers 0.3 s, which is finer than caption timing (±1 s). **Treat line-level deltas as hints for diagnosis, not as proof of cause.**
+- Channel KPIs are **medians**, so a single viral outlier cannot skew them.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Next.js 15 Frontend                    │
-│  Dashboard · Transcripts · Comments · Retention · RAG Chat  │
-└────────────────────────┬────────────────────────────────────┘
-                         │ HTTP / REST
- ┌────────────────────────▼──────────────────────────────────┐
- │                    FastAPI Backend                        │
- │                                                           │
- │  ┌─────────────┐   ┌──────────────────────────────────┐   │
- │  │ Quick Sync  │   │      Extended Pipeline           │   │
- │  │ (sync'd)    │   │   (FastAPI BackgroundTasks)      │   │
- │  └─────────────┘   │                                  │   │
- │                    │  Thumbnails → Transcripts →      │   │
- │                    │  Comments  → Retention →         │   │
- │                    │  Embeddings (ChromaDB)           │   │
- │                    └──────────────────────────────────┘   │
- │                                                           │
- │  ┌──────────────┐  ┌──────────────┐  ┌───────────────┐    │
- │  │  SQLite +    │  │  ChromaDB    │  │  Gemini API   │    │
- │  │  SQLAlchemy  │  │  (local,     │  │  2.5 Flash +  │    │
- │  │  (WAL mode)  │  │  cosine)     │  │  embedding-   │    │
- │  └──────────────┘  └──────────────┘  │  001 (3072d)  │    │
- │                                      └───────────────┘    │
- └───────────────────────────────────────────────────────────┘
-                             │
-              Google OAuth 2.0 (multi-tenant)
-                  YouTube Data API v3
-                YouTube Analytics API v2
+Browser ──► Next.js 16 (frontend/)
+              ├─ NextAuth (Google OAuth, read-only scopes)
+              └─ /api/backend/* proxy ──► FastAPI (backend/)   [signed 2-min JWT]
+                                            ├─ SQLite (SQLAlchemy 2 + Alembic)
+                                            ├─ ChromaDB (one collection per user)
+                                            ├─ YouTube Data API v3 + Analytics API v2
+                                            └─ Gemini (generation + 768-d embeddings)
 ```
 
----
+### Security model
+- **The browser never talks to the API directly** and never sees a Google token. The Next.js server reads the encrypted NextAuth cookie and signs a 2-minute HS256 JWT (`BACKEND_JWT_SECRET`). The API takes the user's identity **only** from that token.
+- The Google access token goes to the API only on `POST /sync`. There the API checks with Google that the token belongs to the same verified email.
+- OAuth scopes are read-only: `youtube.readonly` and `yt-analytics.readonly`.
+- All data is stored under `users.id` with `ON DELETE CASCADE`, and each user has their own vector collection. Tests check that one user cannot read another user's data.
+- `DELETE /api/v1/me/data` (in **Settings**) wipes everything stored for a user.
+- AI endpoints are rate-limited per user. Untrusted text (titles, scripts, comments) is wrapped as data in every prompt, so the model does not follow instructions hidden inside it.
+- Debug routes are off unless you set `ENABLE_DEBUG_ROUTES=true`. Production refuses to start with them on.
 
-## Features
+### Sync design
+- **Incremental and resumable.** Each phase fetches only what is missing or stale and commits after every video. If a sync is interrupted or the token expires, the job ends as `partial`, and running it again continues where it stopped.
+- Phases run in this order: channel → videos (paginated, batched 50 at a time) → analytics → retention (refetched every 7 days) → scripts → comments (refetched when the count changes) → thumbnails → AI index (only changed documents are re-embedded).
+- At most one active job per user. A partial unique index in the database enforces this. Jobs left running when the server restarts are marked `interrupted`.
+- YouTube API quota is not a practical limit. A full sync costs about 30 units plus comments, out of 10,000 per day.
 
-### Data Pipeline (async, per-user)
-| Phase | What it does |
-|---|---|
-| **Thumbnails** | Downloads thumbnail, extracts dominant colours + brightness via PIL |
-| **Transcripts** | Fetches subtitles via `youtube-transcript-api`, chunks into 150-word segments with timestamps |
-| **Comments** | Mines top-level comments + replies via `commentThreads` API (up to 200 per video) |
-| **Retention** | Pulls `audienceWatchRatio` curves from YouTube Analytics API v2 |
-| **Embeddings** | Embeds transcript chunks + comment blocks into ChromaDB using `gemini-embedding-001` (3072 dims) |
+## Running locally
 
-### Dashboard pages
-- **Analytics** — KPIs, views heatmap, hall of fame
-- **Transcripts** — Full text with clickable timestamp links to YouTube
-- **Comment Mining** — Top comments across the channel sorted by engagement; diagnostic panel for API access issues
-- **Audience Retention** — Per-video and channel-average retention curves (Recharts); diagnostic panel for Analytics API
-- **RAG Chat** — Gemini 2.5 Flash chat grounded in transcripts + viewer comments; sources panel distinguishes transcript timestamps from comment blocks
-- **AI Tools** — SEO title generation, audience insight mining
-- **Settings** — Account info, OAuth scope status, re-index button
-
-### Technical highlights
-- **Multi-tenant**: every DB row and ChromaDB document is scoped by `user_email`
-- **Session isolation**: each extractor creates and closes its own SQLAlchemy session — no cross-video rollback cascades
-- **Token auto-refresh**: NextAuth JWT callback refreshes Google OAuth tokens before expiry using `refresh_token`
-- **Granular error diagnostics**: debug endpoints hit the YouTube API directly and return the full raw JSON (error reason, HTTP status), surfaced in the UI
-- **Job progress**: `SyncJob` table + polling component shows phase-by-phase progress in real time
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS, Recharts |
-| Backend | FastAPI, SQLAlchemy 2.x, SQLite (WAL), Pydantic |
-| AI / Embeddings | Google Gemini 2.5 Flash, `gemini-embedding-001` (3072d) |
-| Vector DB | ChromaDB (local persistent, cosine similarity) |
-| Auth | NextAuth.js with Google OAuth 2.0 |
-| APIs | YouTube Data API v3, YouTube Analytics API v2 |
-| Infra | FastAPI BackgroundTasks (no Celery/Redis required) |
-
----
-
-## Repository Structure
-
-```
-BlindCreators/
-├── backend/
-│   ├── src/
-│   │   ├── api.py                  # FastAPI app — 20+ endpoints
-│   │   ├── pipeline.py             # Async extended pipeline orchestrator
-│   │   ├── ai_assistant.py         # RAG query + Gemini integration
-│   │   ├── youtube_sync.py         # Quick video metadata sync
-│   │   ├── extractors/
-│   │   │   ├── transcripts.py      # youtube-transcript-api v1.x
-│   │   │   ├── comments.py         # commentThreads with 403 reason parsing
-│   │   │   ├── retention.py        # YouTube Analytics API
-│   │   │   └── thumbnails.py       # PIL colour analysis
-│   │   ├── models/
-│   │   │   └── database.py         # SQLAlchemy models + init_db
-│   │   └── rag/
-│   │       ├── chroma_client.py    # ChromaDB persistent client
-│   │       └── embedder.py         # Gemini embedding-001 batch embedder
-│   ├── data/
-│   │   ├── database.sqlite         # SQLite database (gitignored)
-│   │   └── chroma/                 # ChromaDB storage (gitignored)
-│   └── requirements.txt
-├── frontend/
-│   └── src/
-│       ├── app/
-│       │   ├── api/auth/           # NextAuth route (Google OAuth + refresh)
-│       │   ├── comments/           # Comment mining page
-│       │   ├── transcripts/        # Transcript viewer
-│       │   ├── retention/          # Retention curves page
-│       │   ├── rag/                # RAG chat page
-│       │   ├── settings/           # Account & data tools
-│       │   └── ai_tools/           # SEO title generator
-│       └── components/
-│           ├── Sidebar.tsx
-│           ├── TopHeader.tsx       # Full Sync button + job progress
-│           └── SyncProgress.tsx    # Phase progress panel (polling)
-└── .env.example
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.12+
-- Node.js 18+
-- Google Cloud project with these APIs enabled:
-  - YouTube Data API v3
-  - YouTube Analytics API v2
-- Google OAuth 2.0 credentials with scopes:
-  - `youtube.readonly`
-  - `youtube.force-ssl` (required for reading comments)
-  - `yt-analytics.readonly`
-- Gemini API key (Google AI Studio)
-
-### Backend
+Requirements: Python 3.12 with [uv](https://docs.astral.sh/uv/), and Node 22.
 
 ```bash
+# 1. Secrets
+cp .env.example .env                         # fill BACKEND_JWT_SECRET and GEMINI_API_KEY
+#    frontend/.env.local needs GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET,
+#    NEXTAUTH_URL, BACKEND_URL and the same BACKEND_JWT_SECRET (see .env.example).
+
+# 2. API: runs migrations on startup
 cd backend
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp ../.env.example .env    # fill in your keys
-uvicorn src.api:app --reload --host 127.0.0.1 --port 8000
-```
+uv sync
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
-### Frontend
-
-```bash
-cd frontend
+# 3. Web
+cd ../frontend
 npm install
-cp ../.env.example .env.local   # fill in GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET
-npm run dev
+npm run dev                                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000), sign in with Google, and click **Full Sync**.
+In Google Cloud, enable the **YouTube Data API v3** and the **YouTube Analytics API**. Add `http://localhost:3000/api/auth/callback/google` as an authorized redirect URI.
 
----
-
-## Environment Variables
-
-```env
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=http://localhost:3000
-
-# Gemini
-GEMINI_API_KEY=
+### Quality gates (CI runs these on every push)
+```bash
+cd backend  && uv run ruff check . && uv run ruff format --check . && uv run pytest
+cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
----
+## Project layout
+```
+backend/
+  app/
+    main.py            app factory, CORS, error handling, startup migrations
+    config.py          all settings (pydantic-settings)
+    auth.py            JWT verification → current user
+    db.py, models.py   single SQLAlchemy engine/session, ORM schema
+    clients/           youtube.py, gemini.py, captions.py, vectors.py
+    services/          sync.py, insights.py, retention.py (pure maths), rag.py, ai.py, text.py
+    routers/           account.py (me, sync, jobs), analytics.py, ai.py
+  alembic/             migrations
+  tests/               auth, tenant isolation, retention maths, YouTube client, sync
+frontend/src/
+  app/(app)/           overview, shorts, videos/[id], audience, ideas, ask, settings
+  app/api/backend/     authenticated proxy to the API
+  app/login/           sign-in
+  components/          shell, UI primitives, charts
+  lib/                 auth options, API client, types, formatters
+```
 
 ## Roadmap
-
-| Phase | Status |
-|---|---|
-| Video metadata ETL + analytics dashboard | Done |
-| Google OAuth multi-tenant auth + token refresh | Done |
-| Transcript extraction + chunked indexing | Done |
-| Comment mining + engagement ranking | Done |
-| Audience retention curves (Analytics API) | Done |
-| ChromaDB vector store + Gemini embeddings | Done |
-| RAG Chat (transcripts + comments) | Done |
-| Thumbnail visual analysis (PIL) | Done |
-| PostgreSQL migration for production | Planned |
-| Multi-channel support per user | Planned |
-| Scheduled background sync (cron) | Planned |
-
----
-
-**Lead Developer**: [Pablo Martínez Suárez](https://github.com/pablomrtinezzz)
+1. **Baseline, then experiment.** Record medians for the last 20–30 Shorts (% viewed, hook at 3 s, subscribers per 1k views). Then change one thing at a time, with about 15 Shorts per variant, and fix the success metric before you start.
+2. **Before offering it to other creators:**
+   - Replace caption scraping (`youtube-transcript-api`) with the official captions API or with script upload.
+   - Review the YouTube API Services data-retention policy.
+   - Complete Google OAuth verification for the sensitive scopes.
+3. **Postgres and a worker** only when the API runs as more than one instance or has sustained concurrent writers. `DATABASE_URL` and Alembic already make that switch cheap, and pgvector could then replace Chroma.
