@@ -1,7 +1,61 @@
-/* frontend/src/app/globals.css */
 @import "tailwindcss";
 
+/*
+ * BlindCreators design tokens (dark theme).
+ * Chart colours come from a CVD-validated palette (series-1 / series-2 pass all checks on --surface).
+ */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-bg: #0f0f0e;
+  --color-surface: #1a1a19;
+  --color-surface-2: #222220;
+  --color-surface-3: #2b2b28;
+  --color-line: #33332f;
+  --color-ink: #f0efec;
+  --color-ink-2: #c3c2b7;
+  --color-ink-3: #94938a;
+
+  --color-brand: #b4a9ff;
+  --color-brand-strong: #9085e9;
+  --color-brand-ink: #14121f;
+
+  --color-series-1: #3987e5;
+  --color-series-2: #d95926;
+  --color-benchmark: #8a8980;
+
+  --color-good: #0ca30c;
+  --color-good-ink: #5fd35f;
+  --color-warn: #fab219;
+  --color-critical: #d03b3b;
+  --color-critical-ink: #f08080;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
 body {
-  background-color: #0f172a;
-  color: #f8fafc;
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-brand) 35%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
